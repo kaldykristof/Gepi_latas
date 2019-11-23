@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import pytesseract
 
 img_original = cv2.imread("./images/img_1.jpg")
 img_grayscale = cv2.cvtColor(img_original, cv2.COLOR_BGR2GRAY)
@@ -12,26 +11,24 @@ contours, hierarchy = cv2.findContours(img_threshold, cv2.RETR_LIST, cv2.CHAIN_A
 
 def enhance_image(image, scale):
     scale = scale * 100
-    width = int(image.shape[1] * scale / 100)
-    height = int(image.shape[0] * scale / 100)
-    newDimensions = (width, height)
-    resizedImage = cv2.resize(image, newDimensions) #interpolation = cv2.INTER_LINEAR
-    return resizedImage
+    new_width = int(image.shape[1] * scale / 100)
+    new_height = int(image.shape[0] * scale / 100)
+    new_dimensions = (new_width, new_height)
+    resizedImage = cv2.resize(image, new_dimensions) #interpolation = cv2.INTER_LINEAR
+    denoised = cv2.fastNlMeansDenoising(resizedImage)
+    return denoised
 
 possiblePlates = []
 
 for contour in contours:
     (x, y, width, height) = cv2.boundingRect(contour)
     area = width * height
-    roi = img_threshold[y:y+height, x:x+width].copy()
+    roi = img_contrast[y:y+height, x:x+width].copy()
     if (2000 < area < 6000) and (width >= 2 * height):
         possiblePlates.append(enhance_image(roi, 2.5))
         cv2.rectangle(img_original, (x,y), (x+width,y+height), (0,255,0), 2)
 
-#pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 for i, plate in enumerate(possiblePlates):
-    #text = pytesseract.image_to_string(plate_filled, lang = "eng")
-    #print(text)
     cv2.imshow("Talalt rendszamtablak ({})".format(i), plate)
 
 cv2.imshow("Eredeti kep", img_original)
