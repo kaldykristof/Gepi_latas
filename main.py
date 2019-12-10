@@ -26,6 +26,7 @@ for contour in contours:
     roi = img_contrast[y:y+height, x:x+width]
     # Kontúrok szűkítése rendszámra hasonlító téglalapokra
     if ((2000 < area < 10000) and (width >= height * 2) and (width <= height * 6)):
+        # Kontúr átméretezése fix méretre
         possible_plate = cv2.resize(roi, (225,50))
         characters_found = 0
         for template in templates:
@@ -48,11 +49,12 @@ for contour in contours:
                 col = top_left[0]
                 row = top_left[1]
                 if (mask[row + h//2, col + w//2] != 255):
+                    # Ha valahol talált egyezést megjelöli, hogy ott többször ne találhasson
                     mask[row:row+h, col:col+w] = 255
                     cv2.rectangle(possible_plate, top_left, bottom_right, (0,0,255), 1)
                     characters_found += 1
                     found_characters.append((name, col))
-        # Ha talált egy rendes rendszámot mentse el és rajzolja ki
+        # Ha pontosan 7 karaktert talált a kontúron mentse el és rajzolja ki az eredeti képre
         if (characters_found == 7):
             license_plate = possible_plate
             cv2.rectangle(img_original, (x,y), (x+width,y+height), (0,255,0), 2)
