@@ -1,27 +1,30 @@
 import cv2
 import numpy as np
 from glob import glob
-import os
+from os import path
 
+# Karakterek betöltése egy listába
 templates = []
-characters = glob("./characters/*.png")
-for character in characters:
-    templates.append(character)
+template_characters = glob("./characters/*.png")
+for temp_char in template_characters:
+    templates.append(temp_char)
 
-img_original = cv2.imread("././images/img_1.jpg")
+# Bemeneti kép feldolgozása
+img_original = cv2.imread("././images/img_2.jpg", 1)
 mask = np.zeros(img_original.shape[:2], np.uint8)
 img_grayscale = cv2.cvtColor(img_original, cv2.COLOR_BGR2GRAY)
 img_contrast = cv2.convertScaleAbs(img_grayscale, alpha = 1.25, beta = 0)
 (_, img_threshold) = cv2.threshold(img_contrast, 0, 255, cv2.THRESH_OTSU)
-
 (contours, _) = cv2.findContours(img_threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-possible_plates = []
+# Üres lista, amibe később a talált karakterek kerülnek
+found_characters = []
 
 for contour in contours:
     (x, y, width, height) = cv2.boundingRect(contour)
     area = width * height
     roi = img_contrast[y:y+height, x:x+width]
+    # Kontúrok szűkítése rendszámra hasonlító téglalapokra
     if ((2000 < area < 10000) and (width >= height * 2) and (width <= height * 6)):
         possible_plate = cv2.resize(roi, (225,50))
         characters_found = 0
@@ -29,31 +32,17 @@ for contour in contours:
             temp = cv2.imread(template, 0)
             (w, h) = temp.shape[::-1]
             res = cv2.matchTemplate(possible_plate, temp, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.8
-            loc = np.where(res >= threshold)
+            # Küszöbérték beállítása a keresett karakter méretei alapján
+            if ((w <= 20) and (h >= 20)): # '1'-es és 'I' karakterek
+                threshold = 0.9
+            elif (h <= 20): # '-' karakter
+                threshold = 0.75
+            else: # Minden más karakter
+                threshold = 0.8
+            # A küszöbértéket megugró találatok elmentése
+            loc = np.where(res > threshold)
             for pt in zip(*loc[::-1]):
-                if (mask[pt[1] + h//2, pt[0] + w//2] != 255):
-                    mask[pt[1]:pt[1]+h, pt[0]:pt[0]+w] = 255
-                    characters_found += 1
-        if (characters_found >= 3):
-            possible_plates.append(possible_plate)
-            cv2.rectangle(img_original, (x,y), (x+width,y+height), (0,255,0), 2)
-
-mask = np.zeros(img_original.shape[:2], np.uint8)
-rendszam = []
-
-for possible_plate in possible_plates:
-    for template in templates:
-            #--------template beolvasása--------
-            temp = cv2.imread(template, 0)
-            (w, h) = temp.shape[::-1]
-            #--------matchTemplate--------
-            res = cv2.matchTemplate(possible_plate, temp, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.9 if (h > 15) else 0.7
-            #--------
-            loc = np.where(res >= threshold)
-            for pt in zip(*loc[::-1]):
-                name = str(os.path.basename(template)).split(".")[0]
+                name = str(path.basename(template)).split(".")[0]
                 top_left = pt
                 bottom_right = (pt[0] + w, pt[1] + h)
                 col = top_left[0]
@@ -61,19 +50,35 @@ for possible_plate in possible_plates:
                 if (mask[row + h//2, col + w//2] != 255):
                     mask[row:row+h, col:col+w] = 255
                     cv2.rectangle(possible_plate, top_left, bottom_right, (0,0,255), 1)
-                    rendszam.append((name, col))
-    cv2.imshow("Rendszam", possible_plate)
+                    characters_found += 1
+                    found_characters.append((name, col))
+        # Ha talált egy rendes rendszámot mentse el és rajzolja ki
+        if (characters_found == 7):
+            license_plate = possible_plate
+            cv2.rectangle(img_original, (x,y), (x+width,y+height), (0,255,0), 2)
 
+# Talált karakterek kiíratása (rendezetlen)
+print("\nTalált karakterek (rendezetlen):")
+for character in found_characters:
+    print(character, end = " ")
+
+# Karakterek sorba rendezése oszlop alapján
 def sortBySecond(element): 
     return element[1]
+found_characters.sort(key = sortBySecond)  
 
-rendszam.sort(key = sortBySecond)  
+# Talált karakterek kiíratása (rendezett)
+print("\n\nTalált karakterek (rendezetlen):")
+for character in found_characters:
+    print(character, end = " ")
 
-print("Rendszam:")
-
-for betu in rendszam:
-    print(betu[0], sep=' ', end='', flush=True)
+# Formázott rendszám kiíratása
+print("\n\nTalált rendszám:")
+for character in found_characters:
+    print(character[0], end = '')
 
 cv2.imshow("Eredeti kep", img_original)
+cv2.imshow("Talalt rendszam", license_plate)
+
 cv2.waitKey(0)
 cv2.destroyAllWindows()
