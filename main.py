@@ -2,15 +2,18 @@ import cv2
 import numpy as np
 from glob import glob
 from os import path
+import timeit
+
+start_time = timeit.default_timer()
 
 # Karakterek betöltése egy listába
 templates = []
-template_characters = glob("./characters/*.png")
+template_characters = glob("characters/*.png")
 for temp_char in template_characters:
     templates.append(temp_char)
 
 # Bemeneti kép feldolgozása
-img_original = cv2.imread("././images/img_2.jpg", 1)
+img_original = cv2.imread("images/img_10.jpg", 1)
 mask = np.zeros(img_original.shape[:2], np.uint8)
 img_grayscale = cv2.cvtColor(img_original, cv2.COLOR_BGR2GRAY)
 img_contrast = cv2.convertScaleAbs(img_grayscale, alpha = 1.25, beta = 0)
@@ -20,11 +23,11 @@ img_contrast = cv2.convertScaleAbs(img_grayscale, alpha = 1.25, beta = 0)
 # Üres lista, amibe később a talált karakterek kerülnek
 found_characters = []
 
-for contour in contours:
+for i,contour in enumerate(contours):
     (x, y, width, height) = cv2.boundingRect(contour)
     area = width * height
     roi = img_contrast[y:y+height, x:x+width]
-    # Kontúrok szűkítése rendszámra hasonlító téglalapokra
+    # Kontúrok szűkítése rendszámtáblára hasonlító téglalapokra
     if ((2000 < area < 10000) and (width >= height * 2) and (width <= height * 6)):
         # Kontúr átméretezése fix méretre
         possible_plate = cv2.resize(roi, (225,50))
@@ -37,7 +40,7 @@ for contour in contours:
             if ((w <= 20) and (h >= 20)): # '1'-es és 'I' karakterek
                 threshold = 0.9
             elif (h <= 20): # '-' karakter
-                threshold = 0.75
+                threshold = 0.8
             else: # Minden más karakter
                 threshold = 0.8
             # A küszöbértéket megugró találatok elmentése
@@ -70,7 +73,7 @@ def sortBySecond(element):
 found_characters.sort(key = sortBySecond)  
 
 # Talált karakterek kiíratása (rendezett)
-print("\n\nTalált karakterek (rendezetlen):")
+print("\n\nTalált karakterek (rendezett):")
 for character in found_characters:
     print(character, end = " ")
 
@@ -79,8 +82,16 @@ print("\n\nTalált rendszám:")
 for character in found_characters:
     print(character[0], end = '')
 
-cv2.imshow("Eredeti kep", img_original)
-cv2.imshow("Talalt rendszam", license_plate)
+if (len(found_characters) == 7):
+    cv2.imshow("Eredeti kep", img_original)
+    cv2.imshow("Talalt rendszam", license_plate)
+else:
+    print("\n\nA talált rendszám nem teljes!")
+
+# Futásidő kiszámítása
+stop_time = timeit.default_timer()
+runtime = round(stop_time - start_time, 5)
+print("\n\nFutásidő: {0} másodperc".format(runtime))
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
