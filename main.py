@@ -131,6 +131,8 @@ for i, image in enumerate(images):
         if (exp_char != formatted_plate[i] and exp_char not in characters_not_found):
             characters_not_found.append(exp_char)
 
+characters_not_found = sorted(characters_not_found)
+
 print("-------------------------------------------------")
 print("Összes kép száma: {0} db\nEbből:".format(len(images)))
 print(" - 100 %-os találat: {0} db ({1}%)".format(full_match, round(full_match / len(images) * 100, 2)))
